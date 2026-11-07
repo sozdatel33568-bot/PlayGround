@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#101c14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><path fill=%22%23b83b3f%22 d=%22M2 17C4 7 11 3 16 3s12 4 14 14c-6 5-22 5-28 0Z%22/><path fill=%22%23eee1c1%22 d=%22M12 17h8l2 13H10z%22/></svg>" />
+  <title>Корни леса — грибная игра</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="Игровое поле: гриб захватывает лес корнями"></canvas>
+
+    <!-- In-game HUD -->
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div class="hud-left">
+          <div class="health" id="health" aria-label="Запас спор">
+            <span class="spore full"></span><span class="spore full"></span><span class="spore full"></span>
+          </div>
+          <div class="roots-panel">
+            <div class="roots-label"><span>КОРНИ</span><b id="rootLevel">УР. 1</b></div>
+            <div class="roots-track"><span id="rootFill"></span></div>
+          </div>
+        </div>
+
+        <div class="objective">
+          <span class="objective-eyebrow">ЗАХВАТ ЛЕСА</span>
+          <div class="objective-main"><b id="capturedCount">0</b><span>/ 7</span></div>
+          <div class="objective-track"><span id="objectiveFill"></span></div>
+        </div>
+
+        <div class="hud-right">
+          <div class="minimap-wrap"><canvas id="minimap" width="132" height="99" aria-label="Карта леса"></canvas></div>
+          <div class="hud-buttons">
+            <button id="pauseBtn" class="icon-btn" aria-label="Пауза" title="Пауза">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+            </button>
+            <button id="soundBtn" class="icon-btn" aria-label="Звук" title="Звук">
+              <svg class="icon-sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.7 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <svg class="icon-sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="m16 9 5 6m0-6-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="toast" class="toast"></div>
+      <div id="compass" class="compass" aria-hidden="true">
+        <span class="compass-arrow"></span>
+        <span class="compass-text">ПЕНЬ</span>
+      </div>
+    </div>
+
+    <!-- Touch controls -->
+    <div id="controls" class="hidden">
+      <div id="joystick" class="joystick" aria-label="Джойстик движения">
+        <div class="joystick-ring"></div>
+        <div id="joystickKnob" class="joystick-knob">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="poisonBtn" class="action-btn poison" aria-label="Ядовитые корни">
+          <span class="cooldown"></span>
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <path class="root" d="M32 7c-2 14-14 18-14 31a14 14 0 0 0 28 0C46 25 34 21 32 7Z"/>
+            <path class="bubble" d="M25 33a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm11-6a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/>
+          </svg>
+          <span class="action-copy"><b>ЯД</b><small>E</small></span>
+        </button>
+        <button id="strikeBtn" class="action-btn strike" aria-label="Удар корнем">
+          <span class="cooldown"></span>
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <path class="root" d="M8 52c9-4 13-10 16-18 3-8 5-12 12-17M24 34c5 0 9 2 13 6M34 22c-1 6 0 11 4 15M31 25c-6 0-10-2-14-6"/>
+            <path class="tip" d="M35 17c5-4 12-4 17-1-4 5-10 7-17 6Z"/>
+          </svg>
+          <span class="action-copy"><b>УДАР</b><small>SPACE</small></span>
+        </button>
+      </div>
+      <div class="key-hints">
+        <span><b>WASD</b> движение</span><span><b>SPACE</b> удар</span><span><b>E</b> яд</span>
+      </div>
+    </div>
+
+    <!-- Start menu -->
+    <div id="menu" class="overlay menu visible">
+      <div class="menu-grain"></div>
+      <div class="menu-panel">
+        <div class="menu-crest">
+          <svg viewBox="0 0 190 160" aria-hidden="true">
+            <defs>
+              <radialGradient id="capGrad" cx="42%" cy="30%" r="75%">
+                <stop offset="0" stop-color="#e96b55"/><stop offset=".62" stop-color="#b83b3f"/><stop offset="1" stop-color="#732634"/>
+              </radialGradient>
+              <linearGradient id="stemGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#fff6d8"/><stop offset="1" stop-color="#cdbf98"/>
+              </linearGradient>
+            </defs>
+            <g class="crest-roots" fill="none" stroke="#b9d99a" stroke-linecap="round">
+              <path d="M95 128c-8 10-17 13-26 20M95 128c8 10 17 13 26 20M95 132c-2 9 0 16-3 23M92 94c-18 8-33 5-50 11M98 96c20 8 33 5 50 10"/>
+              <path d="M45 105c-9 2-15 7-20 14M116 134c7 2 12 7 15 13M61 140c-5 4-7 9-7 14" stroke-width="2"/>
+            </g>
+            <ellipse cx="95" cy="132" rx="34" ry="9" fill="#0d160f" opacity=".35"/>
+            <path d="M79 85h32c4 21 2 40-2 47-7 6-21 6-28 0-4-8-5-27-2-47Z" fill="url(#stemGrad)"/>
+            <ellipse cx="91" cy="104" rx="3.5" ry="5" fill="#422d29" opacity=".8"/><ellipse cx="104" cy="104" rx="3.5" ry="5" fill="#422d29" opacity=".8"/>
+            <path d="M18 93c10-37 38-62 75-62 44 0 73 26 82 61-13 13-43 19-77 19-37 0-64-6-80-18Z" fill="url(#capGrad)"/>
+            <path d="M25 91c12-31 37-51 68-51 36 0 61 20 72 50-19 10-44 15-72 15-25 0-51-5-68-14Z" fill="none" stroke="#f1ad86" stroke-opacity=".26" stroke-width="2"/>
+            <g fill="#f8edcf" opacity=".93">
+              <ellipse cx="55" cy="65" rx="10" ry="6.5" transform="rotate(-18 55 65)"/>
+              <ellipse cx="91" cy="48" rx="8" ry="5.5" transform="rotate(8 91 48)"/>
+              <ellipse cx="127" cy="63" rx="11" ry="7" transform="rotate(20 127 63)"/>
+              <ellipse cx="151" cy="83" rx="7" ry="4.5" transform="rotate(25 151 83)"/>
+              <ellipse cx="72" cy="88" rx="6" ry="4" transform="rotate(-8 72 88)"/>
+            </g>
+            <path d="M81 88c4 3 9 3 13 0" fill="none" stroke="#6c302d" stroke-width="2" stroke-linecap="round"/>
+            <g class="crest-fireflies" fill="#c9ff9a">
+              <circle cx="28" cy="42" r="2.5"/><circle cx="162" cy="38" r="2"/><circle cx="174" cy="100" r="3"/><circle cx="17" cy="113" r="1.8"/>
+            </g>
+          </svg>
+        </div>
+
+        <div class="eyebrow">МИЦЕЛИАЛЬНАЯ ИГРА</div>
+        <h1>КОРНИ<br><span>ЛЕСА</span></h1>
+        <p class="tagline">Ты — древний гриб. Прорасти в каждую чащу,<br>подчини лес и перехитри его хищников.</p>
+
+        <div class="ability-list">
+          <div class="ability">
+            <span class="ability-icon strike-icon">
+              <svg viewBox="0 0 32 32"><path d="M4 27c6-2 8-7 10-13 1-4 3-7 7-9M14 17c4 0 6 2 8 5M18 11c0 4 1 7 4 9M16 13c-4 1-7-1-9-4M22 5c3-2 6-2 8-1-2 3-5 4-8 4Z"/></svg>
+            </span>
+            <div><b>Удар корнем</b><span>Мгновенно сражает любого соперника в радиусе.</span></div>
+          </div>
+          <div class="ability">
+            <span class="ability-icon poison-icon">
+              <svg viewBox="0 0 32 32"><path d="M16 3c-1 7-7 9-7 16a7 7 0 0 0 14 0c0-7-6-9-7-16Z"/><circle cx="13" cy="18" r="2"/><circle cx="19" cy="14" r="1.4"/></svg>
+            </span>
+            <div><b>Ядовитые корни</b><span>Касание делает врагов зелёными — они гибнут сами.</span></div>
+          </div>
+          <div class="ability">
+            <span class="ability-icon root-icon">
+              <svg viewBox="0 0 32 32"><path d="M16 4v11M16 15c-5 1-7 5-8 11M16 15c5 1 7 5 8 11M16 15c0 5-1 8-3 13M16 10c-4 0-6-2-8-5M16 10c4 0 6-2 8-5"/></svg>
+            </span>
+            <div><b>Корни растут</b><span>Сам гриб не меняется, а его сеть и сила растут всю игру.</span></div>
+          </div>
+        </div>
+
+        <button id="startBtn" class="primary-btn">
+          <span>ПРОРАСТИ В ЛЕС</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+
+        <div class="menu-foot">
+          <span>7 древних пней · +10 за соперника</span>
+          <span class="touch-note">Стик слева · кнопки справа</span>
+        </div>
+      </div>
+      <div class="menu-corner">ЗАХВАТИ ВСЮ ЧАЩУ</div>
+    </div>
+
+    <!-- Pause -->
+    <div id="pause" class="overlay modal-overlay">
+      <div class="modal">
+        <div class="modal-eyebrow">ПЕРЕДЫШКА</div>
+        <h2>ПАУЗА</h2>
+        <p>Корни ждут. Лес — тоже.</p>
+        <div class="modal-actions">
+          <button id="resumeBtn" class="primary-btn compact"><span>ПРОДОЛЖИТЬ</span></button>
+          <button id="restartBtn" class="ghost-btn">ЗАНОВО</button>
+          <button id="menuBtn" class="ghost-btn">В МЕНЮ</button>
+        </div>
+        <div class="pause-stats"><span>ОЧКИ <b id="pauseScore">0</b></span><span>СОПЕРНИКИ <b id="pauseKills">0</b></span><span>ПНИ <b id="pauseShrines">0/7</b></span></div>
+      </div>
+    </div>
+
+    <!-- Victory / defeat -->
+    <div id="result" class="overlay modal-overlay">
+      <div class="modal result-modal">
+        <div id="resultSigil" class="result-sigil"></div>
+        <div id="resultEyebrow" class="modal-eyebrow">ЛЕС ПРИНАДЛЕЖИТ ТЕБЕ</div>
+        <h2 id="resultTitle">ЛЕС ТВОЙ</h2>
+        <p id="resultText">Каждый корень дотянулся до сердца чащи.</p>
+        <div class="result-stats">
+          <span><b id="resultScore">0</b><small>ОЧКОВ</small></span>
+          <span><b id="resultKills">0</b><small>СОПЕРНИКОВ</small></span>
+          <span><b id="resultTime">0:00</b><small>ВРЕМЯ</small></span>
+        </div>
+        <div class="modal-actions">
+          <button id="againBtn" class="primary-btn compact"><span>СНОВА В ЛЕС</span></button>
+          <button id="resultMenuBtn" class="ghost-btn">В МЕНЮ</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="rotateHint" class="rotate-hint">
+      <span>Поверни устройство горизонтально — лес станет шире.</span>
+    </div>
+  </div>
+
+  <script src="./game.js"></script>
+</body>
+</html>
